@@ -1,0 +1,169 @@
+﻿@page "/facts"
+@attribute [Authorize]
+
+    <div style="margin-bottom:2em">
+        <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/<RadzenLink Path="/" Text="Fact store" target="_self" />/ Facts
+    </div>
+
+    <h2>Facts</h2>
+    <div class="row" style="display:flex; justify-content:space-between">
+        <div class="m-3" style=" display: flex; align-items:center">
+            @if (existingFactTypes)
+            {
+                <AuthorizeView Roles="@($"{Roles.Admin},{Roles.SuperAdmin},{Roles.Writer}")">
+                    <div style="text-align: left; width:100%">
+                        <RadzenButton Click="@CreateFact"
+                                      Text="Fact aanmaken"
+                                      ButtonStyle="ButtonStyle.Secondary"
+                                      Style="margin: 0 1rem 1rem 0"></RadzenButton>
+                    </div>
+                </AuthorizeView>}
+        </div>
+        <div class="m-3">
+            <RadzenTextBox Placeholder="Zoeken..." Change=@(args=> OnFactSearch(args)) />
+        </div>
+    </div>
+
+    <RadzenDataGrid @ref="grid"
+                    Count="@count"
+                    Data="@facts"
+                    LoadData="@LoadData"
+                    AllowSorting="true"
+                    AllowFiltering="false"
+                    AllowPaging="true"
+                    PageSizeOptions="@pageSizeOptions"
+                    TItem="Fact"
+                    ColumnWidth="200px"
+                    @bind-Value="@selectedFacts"
+                    @onclick="@Navigate"
+                    Style="cursor: pointer">
+        <Columns>
+            <RadzenDataGridColumn TItem="Fact" Property="Key" Title="Sleutel">
+                <FooterTemplate>
+                    <FooterCount Count="count" Grid="grid" PageSize="pageSize" TItem="Fact" />
+                </FooterTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Fact" Property="Value" Title="Waarde" />
+            <RadzenDataGridColumn TItem="Fact" Property="Description" Title="Omschrijving" />
+            <RadzenDataGridColumn TItem="Fact" Property="FactTypeName" Title="Fact type"/>
+            <AuthorizeView Roles="@($"{Roles.Admin},{Roles.SuperAdmin},{Roles.Writer}")">
+                <RadzenDataGridColumn TItem="Fact" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="45px">
+                    <Template Context="fact">
+                        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="edit" Size="ButtonSize.Medium" Click="@(args => EditFact(fact))" @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="Fact" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="45px">
+                    <Template Context="fact">
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium" Click="@(args => DeleteDialog(fact))" @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </AuthorizeView>
+        </Columns>
+    </RadzenDataGrid>
+
+    @code{
+        [Inject]
+        private IFactStoreServiceClient FactStoreServiceClient { get; set; }
+        LoadDataArgs factArgs;
+        RadzenDataGrid<Fact> grid;
+        IEnumerable<int> pageSizeOptions = new int[] { 5, 10, 25, 50 };
+        IEnumerable<Fact> facts;
+        IList<Fact> selectedFacts { get; set; }
+        int count;
+        int pageSize;
+        bool existingFactTypes;
+
+
+        private async Task LoadData(LoadDataArgs args)
+        {
+            try
+            {
+                var factTypeParams = new FactTypeParameters
+                {
+                    PageIndex = 0,
+                    PageSize = 1
+                };
+                var factTypes = await FactStoreServiceClient.GetFactTypesAsync(factTypeParams);
+                existingFactTypes = factTypes.Items != null;
+                var factParameters = new FactParameters
+                {
+                    PageIndex = grid.CurrentPage,
+                    PageSize = args.Top.Value,
+                    Search = args.Filter,
+                    Sorting = args.OrderBy ?? string.Empty
+                };
+                var query = await FactStoreServiceClient.GetAllFactsAsync(factParameters);
+                var result = query.AsQueryable();
+                count = query.Count;
+                pageSize = args.Top.Value;
+                facts = result;
+
+            }
+            catch (Exception)
+            {
+                facts = Enumerable.Empty<Fact>();
+            }
+        }
+
+        private async Task DeleteDialog(Fact fact)
+        {
+            await DialogService.OpenAsync("Bevestigen", deleteDialog =>
+        @<div style="text-align:center;">
+            <p>Bent u zeker om fact <strong>@fact.Key</strong> te verwijderen ?</p>
+            <div class="row">
+                <div class="col-md-12">
+                    <RadzenButton Text="Ok" Click="() =>DeleteFactAsync(fact, deleteDialog)" Style="margin-bottom: 10px; width: 150px" />
+                    <RadzenButton Text="Cancel" Click="() => deleteDialog.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px" />
+                </div>
+            </div>
+        </div>
+        );
+        }
+
+        private async Task DeleteFactAsync(Fact fact, DialogService dialog)
+        {
+            try
+            {
+                await FactStoreServiceClient.DeleteFactAsync(fact.FactTypeName, fact.Key);
+                dialog.Close();
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "Fact werd succesvol verwijderd." });
+                await grid.Reload();
+            }
+            catch (Exception ex)
+            {
+                dialog.Close();
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Oeps! Er is iets fout gegaan." });
+            }
+        }
+
+        private async Task OnFactSearch(string search)
+        {
+            factArgs = new LoadDataArgs
+            {
+                Skip = grid.Query.Skip,
+                Top = grid.Query.Top,
+                Filter = search,
+                OrderBy = grid.Query.OrderBy
+            };
+            await LoadData(factArgs);
+        }
+
+        private void Navigate()
+        {
+            if (selectedFacts != null)
+            {
+                NavigationManager.NavigateTo($"facts/details/{selectedFacts.First().FactTypeName}/{selectedFacts.First().Key}");
+                selectedFacts.Clear();
+            }
+        }
+
+        private void CreateFact()
+        {
+            NavigationManager.NavigateTo("/facts/create");
+        }
+
+        private void EditFact(Fact fact)
+        {
+            NavigationManager.NavigateTo($"/facts/edit/{fact.FactTypeName}/{fact.Key}");
+        }
+    }

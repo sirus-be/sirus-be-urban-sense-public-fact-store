@@ -1,0 +1,28 @@
+﻿@using System.Net.Http
+@using Microsoft.Extensions.Options
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Authentication;
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@using FactStore.Portal
+@using FactStore.Portal.Shared
+@using FactStore.Models
+@using FactStore.Models.Authorization
+@using FactStore.Models.Parameters
+@using FactStore.Client
+@using Radzen.Blazor
+@using Radzen
+@using Microsoft.AspNetCore.Http
+@using System.Security.Claims
+@using IdentityModel.Client;
+@using System.IdentityModel.Tokens.Jwt;
+@using System.IdentityModel;
+
+@inject IOptions<FactStoreServiceClientOptions> Config
+@inject NavigationManager NavigationManager
+@inject NotificationService NotificationService
+@inject DialogService DialogService

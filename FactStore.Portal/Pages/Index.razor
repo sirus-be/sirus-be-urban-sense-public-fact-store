@@ -1,0 +1,37 @@
+﻿@page "/"
+
+<div style="margin-bottom:2em">
+    <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/ Fact store
+</div>
+<AuthorizeView>
+    <Authorized>
+        @((MarkupString)Message)
+    </Authorized>
+    <NotAuthorized>
+        Welkom, gelieve eerst in te loggen.
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private string Message = "Loading";
+    private string Picture = "";
+
+    [CascadingParameter]
+    Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await authenticationStateTask).User;
+
+        @if (user.Identity.IsAuthenticated)
+        {
+            var userName = user.Claims
+                        .Where(c => c.Type.Equals("preferred_username"))
+                        .Select(c => c.Value)
+                        .FirstOrDefault() ?? string.Empty;
+            Message = $"Welkom <b>{userName}</b> op het Urban Sense Fact Store portaal";
+        }
+
+        await base.OnInitializedAsync();
+    }
+}

@@ -1,0 +1,164 @@
+﻿@page "/externalfactconfigs/details"
+@page "/externalfactconfigs/details/{FactTypeName}/{Key}"
+@attribute [Authorize]
+
+<div style="margin-bottom:2em">
+    <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/<RadzenLink Path="/" Text="Fact store" target="_self" />/<RadzenLink Path="/externalfactconfigs" Text="External facts" target="_self" />/ External fact @Key
+</div>
+
+<h3>Details van external fact config: @FactTypeName/@Key</h3>
+<div style="text-align: right; width:100%">
+    <RadzenLink Path="/externalfactconfigs" Text="Terug naar external facts" Style="margin: 0 1rem 1rem 0" />
+</div>
+<AuthorizeView Context="Auth" Roles=@($"{Roles.SuperAdmin}")>
+    <RadzenButton ButtonStyle="ButtonStyle.Secondary"
+                  Text="UpdateFactValue"
+                  Icon="edit"
+                  Click="@(args => UpdateFactValue())"
+                  Style="margin-top:2rem;margin-bottom:2rem;" />
+</AuthorizeView>
+<RadzenTemplateForm Data="@externalFact">
+    <div class="row">
+        <RadzenCard Style="width:400px; height: 350px">
+            <div class="row" style="display:flex; justify-content: space-between">
+                <div>Fact type naam:</div>
+                <b>@externalFact.FactTypeName</b>
+            </div>
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Sleutel:</div>
+                <b>@externalFact.Key</b>
+            </div>
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Omschrijving:</div>
+                <b>@externalFact.Description</b>
+            </div>
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>URL:</div>
+                <a href="@externalFact.Url" target="_blank">@externalFact.Url</a>
+            </div>
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Cronjob schedule expression:</div>
+                <b>@externalFact.CronScheduleExpression</b>
+            </div>
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Authenticatie:</div>
+                <div style="text-align:center">
+                    @if (externalFact.Authentication)
+                    {
+                        <RadzenIcon Icon="check" />
+                    }
+                    else
+                    {
+                        <RadzenIcon Icon="close" />
+                    }
+                </div>
+            </div>
+             <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Authorizatie header Token:</div>
+                @if (externalFact.Authentication)
+                {
+                    <b>@externalFact.TokenAuthorizationHeader</b>
+                }
+            </div>
+           @* <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Authenticatie URL:</div>
+                @if (externalFact.Authentication)
+                {
+                    var url = externalFact.AuthenticationUrl;
+                    <a href="@url" target="_blank">@externalFact.AuthenticationUrl</a>
+                }
+            </div>
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Client ID:</div>
+                @if (externalFact.Authentication)
+                {
+                    <b>@externalFact.ClientId</b>
+                }
+            </div>
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Client secret:</div>
+                @if (externalFact.Authentication)
+                {
+                    <b>@externalFact.ClientId</b>
+                }
+            </div>*@
+        </RadzenCard>
+    </div>
+    <AuthorizeView Context="Auth" Roles=@($"{Roles.Admin},{Roles.SuperAdmin},{Roles.Writer}")>
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary"
+                      Text="External fact aanpassen"
+                      Icon="edit"
+                      Click="@(args => NavigateToEdit(FactTypeName, Key))"
+                      Style="margin-top:2rem;" />
+        <RadzenButton ButtonStyle="ButtonStyle.Danger"
+                      Text="External fact verwijderen"
+                      Icon="delete"
+                      Click="@(args => DeleteDialog(externalFact))"
+                      Style="margin-top:2rem;" />
+    </AuthorizeView>
+</RadzenTemplateForm>
+
+@code {
+    [Inject]
+    private IFactStoreServiceClient FactStoreServiceClient { get; set; }
+    [Parameter]
+    public string FactTypeName { get; set; }
+    [Parameter]
+    public string Key { get; set; }
+
+    ExternalFactConfig externalFact = new ExternalFactConfig();
+
+    protected override async Task OnInitializedAsync()
+    {
+        externalFact = await FactStoreServiceClient.GetExternalFactAscyn(FactTypeName, Key);
+    }
+
+    private void NavigateToEdit(string factTypeName, string key)
+    {
+        NavigationManager.NavigateTo($"/externalfactconfigs/edit/{factTypeName}/{key}");
+    }
+
+    private async Task DeleteDialog(ExternalFactConfig externalFact)
+    {
+        await DialogService.OpenAsync("Bevestigen", deleteDialog =>
+    @<div style="text-align:center;">
+        <p>Bent u zeker om external fact config <strong>@externalFact.FactTypeName / @externalFact.Key</strong> te verwijderen ?</p>
+        <div class="row">
+            <div class="col-md-12">
+                <RadzenButton Text="Ok" Click="() =>DeleteExternalFactAsync(externalFact, deleteDialog)" Style="margin-bottom: 10px; width: 150px" />
+                <RadzenButton Text="Cancel" Click="() => deleteDialog.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px" />
+            </div>
+        </div>
+    </div>
+    );
+    }
+
+    private async Task DeleteExternalFactAsync(ExternalFactConfig externalFact, DialogService dialog)
+    {
+        try
+        {
+            await FactStoreServiceClient.DeleteExternalFactAsync(externalFact.FactTypeName, externalFact.Key);
+            dialog.Close();
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "External fact config werd succesvol verwijderd." });
+            NavigationManager.NavigateTo("/externalfactconfigs");
+        }
+        catch (Exception ex)
+        {
+            dialog.Close();
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Oeps! Er is iets fout gegaan" });
+        }
+    }
+
+    private async Task UpdateFactValue()
+    {
+        try
+        {
+            await FactStoreServiceClient.PutExternalFactUpdateFactValueAsync(externalFact);
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "External fact update Fact value job is gestart." });
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Oeps! Er is iets fout gegaan" });
+        }
+    }
+}

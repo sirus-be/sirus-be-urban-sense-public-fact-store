@@ -1,0 +1,202 @@
+﻿@page "/externalfactconfigs/"
+@attribute [Authorize]
+
+<div style="margin-bottom:2em">
+    <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/<RadzenLink Path="/" Text="Fact store" target="_self" />/ External facts
+</div>
+
+<h2>External facts</h2>
+<div class="row" style="display:flex; justify-content:space-between">
+    <div class="m-3" style=" display: flex; align-items:center">
+        <AuthorizeView Roles="@($"{Roles.Admin},{Roles.SuperAdmin},{Roles.Writer}")">
+            <div style="text-align: left; width:100%">
+                <RadzenButton Click="@CreateExternalFact"
+                              Text="External fact aanmaken"
+                              ButtonStyle="ButtonStyle.Secondary"
+                              Style="margin: 0 1rem 1rem 0"></RadzenButton>
+            </div>
+        </AuthorizeView>
+    </div>
+    <div class="m-3">
+        <RadzenTextBox Placeholder="Zoeken..." Change=@(args=> OnExternalFactSearch(args)) />
+    </div>
+</div>
+<RadzenDataGrid @ref="grid"
+                Count="@count"
+                Data="@externalFacts"
+                LoadData="@LoadData"
+                AllowSorting="true"
+                AllowFiltering="false"
+                AllowPaging="true"
+                PageSizeOptions="@pageSizeOptions"
+                TItem="ExternalFactConfig"
+                @bind-Value="@selectedExternalFacts"
+                @onclick="@Navigate"
+                Style="cursor:pointer">
+    <Columns>
+        <RadzenDataGridColumn TItem="ExternalFactConfig" Property="Key" Title="Sleutel" Filterable="false">
+            <FooterTemplate>
+                <FooterCount Count="count" Grid="grid" PageSize="pageSize" TItem="ExternalFactConfig" />
+            </FooterTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="ExternalFactConfig" Property="FactTypeName" Title="Fact type naam" Filterable="false" />
+        <RadzenDataGridColumn TItem="ExternalFactConfig" Property="Description" Title="Omschrijving" />
+        <RadzenDataGridColumn TItem="ExternalFactConfig" Property="Url" Title="URL" />
+        <RadzenDataGridColumn TItem="ExternalFactConfig" Property="CronScheduleExpression" Title="Cronjob schedule expression" />
+        <RadzenDataGridColumn TItem="ExternalFactConfig" Property="Authentication" Title="Authenticatie">
+            <Template Context="externalFact">
+                <div style="text-align:center">
+                    @if (externalFact.Authentication)
+                    {
+                        <RadzenIcon Icon="check" />
+                    }
+                    else
+                    {
+                        <RadzenIcon Icon="close" />
+                    }
+                </div>
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="ExternalFactConfig" Property="TokenAuthorizationHeader" Title="Token">
+            <Template Context="externalFact">
+                @if (externalFact.Authentication)
+                {
+                    <RadzenLabel Text="@externalFact.TokenAuthorizationHeader" />
+                }
+            </Template>
+        </RadzenDataGridColumn>
+        @*<RadzenDataGridColumn TItem="ExternalFactConfig" Property="AuthenticationUrl" Title="Authenticatie Url">
+            <Template Context="externalFact">
+                @if (externalFact.Authentication)
+                {
+                    <RadzenLabel Text="@externalFact.AuthenticationUrl" />
+                }
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="ExternalFactConfig" Property="ClientId" Title="Client ID">
+            <Template Context="externalFact">
+                @if (externalFact.Authentication)
+                {
+                    <RadzenLabel Text="@externalFact.ClientId" />
+                }
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="ExternalFactConfig" Property="Secret" Title="Client secret">
+            <Template Context="externalFact">
+                @if (externalFact.Authentication)
+                {
+                    <RadzenLabel Text="@externalFact.Secret" />
+                }
+            </Template>
+        </RadzenDataGridColumn>*@
+        <AuthorizeView Roles="@($"{Roles.Admin},{Roles.SuperAdmin},{Roles.Writer}")">
+            <RadzenDataGridColumn TItem="ExternalFactConfig" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="55px">
+                <Template Context="externalFact">
+                    <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="edit" Size="ButtonSize.Medium" Click="@(args => EditExternalFact(externalFact))" @onclick:stopPropagation="true" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="ExternalFactConfig" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="55px">
+                <Template Context="externalFact">
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium" Click="@(args => DeleteDialog(externalFact))" @onclick:stopPropagation="true" />
+                </Template>
+            </RadzenDataGridColumn>
+        </AuthorizeView>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    [Inject]
+    private IFactStoreServiceClient FactStoreServiceClient { get; set; }
+    IEnumerable<ExternalFactConfig> externalFacts;
+    RadzenDataGrid<ExternalFactConfig> grid;
+    LoadDataArgs externalFactArgs;
+    int count;
+    int pageSize;
+    IEnumerable<int> pageSizeOptions = new int[] { 5, 10, 25, 50 };
+    IList<ExternalFactConfig> selectedExternalFacts { get; set; }
+
+
+    private async Task LoadData(LoadDataArgs args)
+    {
+        try
+        {
+            var parameters = new ExternalFactParameters
+                {
+                    PageIndex = grid.CurrentPage,
+                    PageSize = args.Top.Value,
+                    Search = args.Filter,
+                    Sorting = args.OrderBy ?? string.Empty
+                };
+            var result = await FactStoreServiceClient.GetAllExternalFactsAsync(parameters);
+            count = result.Count;
+            pageSize = args.Top.Value;
+            externalFacts = result.Items;
+        }
+        catch (Exception ex)
+        {
+            externalFacts = Enumerable.Empty<ExternalFactConfig>();
+        }
+    }
+
+    private void CreateExternalFact()
+    {
+        NavigationManager.NavigateTo("/externalfactconfigs/create");
+    }
+
+    private async Task OnExternalFactSearch(string search)
+    {
+        externalFactArgs = new LoadDataArgs
+            {
+                Skip = grid.Query.Skip,
+                Top = grid.Query.Top,
+                Filter = search,
+                OrderBy = grid.Query.OrderBy
+            };
+        await LoadData(externalFactArgs);
+    }
+
+    private void EditExternalFact(ExternalFactConfig externalFact)
+    {
+        NavigationManager.NavigateTo($"/externalfactconfigs/edit/{externalFact.FactTypeName}/{externalFact.Key}");
+    }
+
+    private async Task DeleteDialog(ExternalFactConfig externalFact)
+    {
+        await DialogService.OpenAsync("Bevistigen", deleteDialog =>
+    @<div style="text-align:center;">
+        <p>Bent u zeker om external fact config <strong>@externalFact.FactTypeName / @externalFact.Key</strong> te verwijderen ?</p>
+        <div class="row">
+            <div class="col-md-12">
+                <RadzenButton Text="Ok" Click="() =>DeleteExternalFactAsync(externalFact, deleteDialog)" Style="margin-bottom: 10px; width: 150px" />
+                <RadzenButton Text="Cancel" Click="() => deleteDialog.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px" />
+            </div>
+        </div>
+    </div>
+    );
+    }
+
+    private async Task DeleteExternalFactAsync(ExternalFactConfig externalFact, DialogService dialog)
+    {
+        try
+        {
+            await FactStoreServiceClient.DeleteExternalFactAsync(externalFact.FactTypeName, externalFact.Key);
+            dialog.Close();
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "External fact config werd succesvol verwijderd." });
+            await grid.Reload();
+        }
+        catch (Exception ex)
+        {
+            dialog.Close();
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Oeps! Er is iets fout gegaan" });
+        }
+    }
+
+    private void Navigate()
+    {
+        if (selectedExternalFacts != null)
+        {
+            NavigationManager.NavigateTo($"externalfactconfigs/details/{selectedExternalFacts.First().FactTypeName}/{selectedExternalFacts.First().Key}");
+            selectedExternalFacts.Clear();
+        }
+    }
+    }

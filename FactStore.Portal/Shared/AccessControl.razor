@@ -1,0 +1,31 @@
+﻿@inject AuthenticationStateProvider AuthState
+
+<AuthorizeView>
+    <Authorized>
+        <a href="logout">Log out</a>
+        <span style="margin-left:5px">Ingelogd als <b>@User</b></span>
+    </Authorized>
+    <NotAuthorized>
+        <a href="login?redirectUri=/">Log in</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private string User = "Loading";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+
+        @if (state.User.Identity.IsAuthenticated)
+        {
+            var userName = state.User.Claims
+                        .Where(c => c.Type.Equals("preferred_username"))
+                        .Select(c => c.Value)
+                        .FirstOrDefault() ?? string.Empty;
+            User = $"{userName}";
+        }
+
+        await base.OnInitializedAsync();
+    }
+}

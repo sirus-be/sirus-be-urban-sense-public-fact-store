@@ -1,0 +1,111 @@
+﻿@page "/facttypes/create"
+@attribute [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+<style>
+    .rz-fieldset {
+        width:600px;
+    }
+
+    .rz-dropdown{
+        width:100%;
+    }
+</style>
+    <div style="margin-bottom:2em">
+        <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/<RadzenLink Path="/" Text="Fact store" target="_self" />/<RadzenLink Path="/facttypes" Text="Fact types" target="_self" />/ Fact type aanmaken
+    </div>
+
+    <h3>Fact type aanmaken</h3>
+
+    <div style="text-align: right; width:100%">
+        <RadzenLink Path="/facttypes" Text="Terug naar fact types" Style="margin: 0 1rem 1rem 0" />
+    </div>
+
+    <RadzenTemplateForm Data="@factType" Submit="(FactType factType) => Submit(factType)">
+        <div class="row">
+            <RadzenFieldset Text="Nieuw fact type">
+                <div class="row" style="margin-bottom:1rem">
+                    <div class="col-md-4 align-items-center d-flex">
+                        <RadzenLabel Text="Naam" />
+                    </div>
+                    <div class="col-md-8">
+                        <RadzenTextBox Style="width:100%" Name="Name" @bind-Value="factType.Name" />
+                        <RadzenRequiredValidator Component="Name" Text="Naam is verplicht" />
+                    </div>
+                </div>
+                <div class="row" style="margin-bottom:1rem">
+                    <div class="col-md-4 align-items-center d-flex">
+                        <RadzenLabel Text="Omschrijving" />
+                    </div>
+                    <div class="col-md-8">
+                        <RadzenTextArea Style="width:100%" Name="Description" @bind-Value="factType.Description" />
+                    </div>
+                </div>
+                <div class="row" style="margin-bottom:1rem">
+                    <div class="col-md-4 align-items-center d-flex">
+                        <RadzenLabel Text="Rollen" />
+                    </div>
+                    <div class="col-md-8">
+                        <RadzenDropDown AllowClear="true"
+                                        AllowFiltering="true"
+                                        @bind-Value=@selectedRoles
+                                        Multiple="true"
+                                        Data=@roles />
+                    </div>
+                </div>
+                <div style="text-align:right; width:100%">
+                    <RadzenButton ButtonType="ButtonType.Submit" Icon="save" Text="Aanmaken" />
+                </div>
+            </RadzenFieldset>
+        </div>
+    </RadzenTemplateForm>
+
+    @code {
+        [Inject]
+        private IFactStoreServiceClient FactStoreServiceClient { get; set; }
+
+        FactType factType = new FactType();
+
+        IEnumerable<string> roles { get; set; }
+        IEnumerable<string> selectedRoles { get; set; }
+
+        protected override async Task OnInitializedAsync()
+        {
+            var parameters = new RoleParameters
+            {
+                PageIndex = 0,
+                PageSize = 0
+            };
+            var result = await FactStoreServiceClient.GetRolesAsync(parameters);
+            if (result != null) { roles = result.Items.Select(x => x.Name).ToArray(); }
+            else
+            {
+                roles = Enumerable.Empty<string>();
+            }
+        }
+
+        async Task Submit(FactType factType)
+        {
+            try
+            {
+                if (selectedRoles != null)
+                {
+                    factType.Roles = selectedRoles.ToList();
+                }
+                await FactStoreServiceClient.PostFactTypeAsync(factType);
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "Fact type succesvol toegevoegd." });
+                EmptyForm();
+                NavigationManager.NavigateTo("/facttypes");
+            }
+            catch (Exception ex)
+            {
+                factType = new FactType();
+                string errorMessage = string.IsNullOrWhiteSpace(ex.Message) ? "Oeps! Er is iets fout gegaan." : ex.Message;
+                NotificationService.Notify(NotificationSeverity.Error, "Error", errorMessage);
+            }
+        }
+
+        private void EmptyForm()
+        {
+            factType = new FactType();
+            selectedRoles = Enumerable.Empty<string>();
+        }
+    }

@@ -1,0 +1,36 @@
+﻿@typeparam TItem;
+@{
+    <style>
+        .show-items{
+            margin-bottom:auto;
+        }
+    </style>
+
+    var startItem = ((Grid.CurrentPage * Grid.View.Count()) + 1);
+    var endItem = (startItem - 1) + Grid.View.Count();
+    if (Count == 0)
+    {
+        startItem = 0;
+        endItem = 0;
+    }
+    else if (Grid.View.Count() < PageSize)
+    {
+        endItem = Count;
+        startItem = endItem - Grid.View.Count() + 1;
+    }
+    else if (endItem > Count)
+    {
+        endItem = Count;
+    }
+    <p class="show-items">Toont <b> @startItem - @endItem van @Count</b> items</p>
+}
+
+
+@code {
+    [Parameter]
+    public int Count { get; set; }
+    [Parameter]
+    public int PageSize { get; set; }
+    [Parameter]
+    public RadzenDataGrid<TItem> Grid { get; set; }
+}

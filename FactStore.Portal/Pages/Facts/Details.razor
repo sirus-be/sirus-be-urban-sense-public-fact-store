@@ -1,0 +1,103 @@
+﻿@page "/facts/details"
+@page "/facts/details/{FactTypeName}/{Key}"
+@attribute [Authorize]
+
+    <div style="margin-bottom:2em">
+        <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/<RadzenLink Path="/" Text="Fact store" target="_self" />/<RadzenLink Path="/facts" Text="Facts" target="_self" />/ Fact @Key
+    </div>
+
+<h3>Details van fact: @Key</h3>
+<div style="text-align: right; width:100%">
+    <RadzenLink Path="/facts" Text="Terug naar facts" Style="margin: 0 1rem 1rem 0" />
+</div>
+
+<RadzenTemplateForm Data="@fact">
+    <div class="row">
+        <RadzenCard Style="width: 600px;">
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Sleutel:</div>
+                <b>@fact.Key</b>
+            </div>
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Waarde:</div>
+                <b>@fact.Value</b>
+            </div>
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Omschrijving:</div>
+                <b>@fact.Description</b>
+            </div>
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Fact type:</div>
+                <RadzenLink Path="@factTypeDetailsPath" Text="@fact.FactTypeName" />
+            </div>
+        </RadzenCard>
+    </div>
+    <AuthorizeView Context="Auth" Roles=@($"{Roles.Admin},{Roles.SuperAdmin},{Roles.Writer}")>
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary"
+                      Text="Fact aanpassen"
+                      Icon="edit"
+                      Click="@(args => NavigateToEdit(fact.FactTypeName, fact.Key))"
+                      Style="margin-top:2rem;" />
+        <RadzenButton ButtonStyle="ButtonStyle.Danger"
+                      Text="Fact verwijderen"
+                      Icon="delete"
+                      Click="@(args => DeleteDialog(fact))"
+                      Style="margin-top:2rem;" />
+    </AuthorizeView>
+</RadzenTemplateForm>
+
+@code {
+    [Inject]
+    private IFactStoreServiceClient FactStoreServiceClient { get; set; }
+
+    [Parameter]
+    public string Key { get; set; }
+    [Parameter]
+    public string FactTypeName { get; set; }
+
+    Fact fact = new Fact();
+
+    string factTypeDetailsPath;
+
+    protected override async Task OnInitializedAsync()
+    {
+        fact = await FactStoreServiceClient.GetFactAsync(FactTypeName, Key);
+        factTypeDetailsPath = $"/facttypes/details/{fact.FactTypeName}";
+    }
+
+    private void NavigateToEdit(string factTypeName, string key)
+    {
+        NavigationManager.NavigateTo($"/facts/edit/{factTypeName}/{key}");
+    }
+
+    private async Task DeleteDialog(Fact fact)
+    {
+        await DialogService.OpenAsync("Bevistigen", deleteDialog =>
+    @<div style="text-align:center;">
+        <p>Bent u zeker om fact <strong>@fact.Key</strong> te verwijderen ?</p>
+        <div class="row">
+            <div class="col-md-12">
+                <RadzenButton Text="Ok" Click="() =>DeleteFactAsync(fact, deleteDialog)" Style="margin-bottom: 10px; width: 150px" />
+                <RadzenButton Text="Cancel" Click="() => deleteDialog.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px" />
+            </div>
+        </div>
+    </div>
+    );
+    }
+
+    private async Task DeleteFactAsync(Fact fact, DialogService dialog)
+    {
+        try
+        {
+            await FactStoreServiceClient.DeleteFactAsync(fact.FactTypeName, fact.Key);
+            dialog.Close();
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "Fact werd succesvol verwijderd." });
+            NavigationManager.NavigateTo("/facts");
+        }
+        catch (Exception ex)
+        {
+            dialog.Close();
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Oeps! Er is iets fout gegaan" });
+        }
+    }
+}

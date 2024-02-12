@@ -1,0 +1,219 @@
+﻿@page "/externalfactconfigs/edit"
+@page "/externalfactconfigs/edit/{FactTypeName}/{Key}"
+@attribute [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin + "," + Roles.Writer)]
+
+@using System.Linq;
+
+<div style="margin-bottom:2em">
+    <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/<RadzenLink Path="/" Text="Fact store" target="_self" />/<RadzenLink Path="/externalfactconfigs" Text="External facts" target="_self" />/ External fact @Key aanpassen
+</div>
+
+<h3>External fact config aanpassen</h3>
+<h4>Naam: <strong>@FactTypeName/@Key</strong></h4>
+<div style="text-align: right; width:100%">
+    <RadzenLink Path="/externalfactconfigs" Text="Terug naar external fact configs" Style="margin: 0 1rem 1rem 0" />
+</div>
+
+<RadzenTemplateForm Data="@externalFact" Submit="(ExternalFactConfig externalFact)=> Submit(externalFact)">
+    <div class="row">
+        <RadzenFieldset Text="Bewerking external fact" Style="width:750px">
+            <div class="row" style="margin-bottom:1rem;">
+                <div class="col-md-4 align-items-center d-flex">
+                    <RadzenLabel Text="Fact" />
+                </div>
+                <div class="col-md-8">
+                    <RadzenDropDown Name="Fact"
+                                    AllowClear="true"
+                                    TValue="string"
+                                    AllowVirtualization="true"
+                                    Style="width:100%"
+                                    LoadData=@LoadDataVirtualization
+                                    AllowFiltering="true"
+                                    Count="@count"
+                                    Data=@factsList
+                                    @bind-Value="@selectedFact"
+                                    Change=@(args => OnChange(args)) />
+                </div>
+            </div>
+            <div class="row" style="margin-bottom:1rem;">
+                <div class="col-md-4 align-items-center d-flex">
+                    <RadzenLabel Text="Omschrijving" />
+                </div>
+                <div class="col-md-8">
+                    <RadzenTextBox Style="width:100%" Name="Description" @bind-Value="@externalFact.Description" />
+                    <RadzenRequiredValidator Component="Description" Text="Omschrijving is verplicht" />
+                </div>
+            </div>
+            <div class="row" style="margin-bottom:1rem;">
+                <div class="col-md-4 align-items-center d-flex">
+                    <RadzenLabel Text="URL" />
+                </div>
+                <div class="col-md-8">
+                    <RadzenTextBox Style="width:100%" Name="Url" @bind-Value="@externalFact.Url" />
+                    <RadzenRequiredValidator Component="Url" Text="URL is verplicht" />
+                </div>
+            </div>
+            <div class="row" style="margin-bottom:1rem;">
+                <div class="col-md-4 align-items-center d-flex">
+                    <RadzenLabel Text="Cronjob schedule expression" />
+                </div>
+                <div class="col-md-8">
+                    <RadzenTextBox Style="width:100%" Name="CronScheduleExpression" @bind-Value="externalFact.CronScheduleExpression" />
+                </div>
+            </div>
+            <div class="row" style="margin-bottom:1rem;">
+                <div class="col-md-4 align-items-center d-flex">
+                    <RadzenLabel Text="Authenticatie" />
+                </div>
+                <div class="col-md-8 align-items-center d-flex" style="justify-content:flex-end">
+                    <RadzenSwitch Name="Authentication" @bind-Value="externalFact.Authentication" />
+                </div>
+            </div>
+            @if (externalFact.Authentication)
+            {
+                <div class="row" style="margin-bottom:1rem;">
+                    <div class="col-md-4 align-items-center d-flex">
+                        <RadzenLabel Text="Authorizatie header Token" />
+                    </div>
+                    <div class="col-md-8">
+                        <RadzenTextBox Style="width:100%" Name="TokenAuthorizationHeader" @bind-Value="externalFact.TokenAuthorizationHeader" />
+                    </div>
+                </div>
+                @* <div class="row" style="margin-bottom:1rem;">
+                    <div class="col-md-4 align-items-center d-flex">
+                    <RadzenLabel Text="Authenticatie URL" />
+                    </div>
+                    <div class="col-md-8">
+                    <RadzenTextBox Style="width:100%" Name="AuthenticationUrl" @bind-Value="externalFact.AuthenticationUrl" />
+                    </div>
+                    </div>
+                    <div class="row" style="margin-bottom:1rem;">
+                    <div class="col-md-4 align-items-center d-flex">
+                    <RadzenLabel Text="Client ID" />
+                    </div>
+                    <div class="col-md-8">
+                    <RadzenTextBox Style="width:100%" Name="ClientId" @bind-Value="externalFact.ClientId" />
+                    </div>
+                    </div>
+                    <div class="row" style="margin-bottom:1rem;">
+                    <div class="col-md-4 align-items-center d-flex">
+                    <RadzenLabel Text="Client Secret" />
+                    </div>
+                    <div class="col-md-8">
+                    <RadzenTextBox Style="width:100%" Name="Secret" @bind-Value="externalFact.Secret" />
+                    </div>
+                    </div>*@
+            }
+            <div style="text-align:right; width:100%">
+                <RadzenButton ButtonType="ButtonType.Submit" Icon="save" Text="Opslaan" />
+            </div>
+        </RadzenFieldset>
+    </div>
+</RadzenTemplateForm>
+@code {
+    [Inject]
+    private IFactStoreServiceClient FactStoreServiceClient { get; set; }
+    [Parameter]
+    public string FactTypeName { get; set; }
+    [Parameter]
+    public string Key { get; set; }
+
+    Fact fact = new Fact();
+    ExternalFactConfig externalFact = new ExternalFactConfig();
+    UpdateExternalFactConfig newExternalFact = new UpdateExternalFactConfig();
+
+    const string keyLabel = "Sleutel:";
+    const string factTypeLabel = " - Fact type:";
+
+    IEnumerable<string> factsList;
+    int count;
+    int pageSize;
+    string selectedFact;
+
+    protected override async Task OnInitializedAsync()
+    {
+        externalFact = await FactStoreServiceClient.GetExternalFactAscyn(FactTypeName, Key);
+        var result = await FactStoreServiceClient.GetFactAsync(FactTypeName, Key);
+        fact = result;
+        selectedFact = GetFactDropDownValue(fact.Key, fact.FactTypeName);
+    }
+
+    private async Task LoadDataVirtualization(LoadDataArgs args)
+    {
+        try
+        {
+            var factParameters = new FactParameters
+                {
+                    PageIndex = args.Skip ?? default(int),
+                    PageSize = args.Top.Value,
+                    Search = args.Filter,
+                    Sorting = args.OrderBy ?? string.Empty
+                };
+
+            var query = await FactStoreServiceClient.GetAllFactsAsync(factParameters);
+            var result = query.AsQueryable();
+            count = query.Count;
+            pageSize = args.Top.Value;
+            factsList = result.Select(f => GetFactDropDownValue(f.Key, f.FactTypeName)).ToList();
+        }
+        catch (Exception)
+        {
+            factsList = Enumerable.Empty<string>().ToList();
+        }
+    }
+
+    private string GetFactDropDownValue(string key, string factTypeName)
+    {
+        return $"{keyLabel}{key}{factTypeLabel}{factTypeName}";
+    }
+
+    private void OnChange(object fact)
+    {
+        var factString = (string)fact;
+        if (factString != null)
+        {
+            int keyFrom = factString.IndexOf(keyLabel) + keyLabel.Length;
+            int keyTo = factString.LastIndexOf(factTypeLabel);
+            int factTypeFrom = factString.IndexOf(factTypeLabel) + factTypeLabel.Length;
+
+
+            var key = factString.Substring(keyFrom, keyTo - keyFrom);
+            var factType = factString.Substring(factTypeFrom);
+
+            newExternalFact.NewFactTypeName = factType;
+            newExternalFact.NewKey = key;
+        }
+    }
+
+    private async Task Submit(ExternalFactConfig externalFact)
+    {
+        try
+        {
+            var updateExternalFact = new UpdateExternalFactConfig
+                {
+                    Description = externalFact.Description,
+                    NewKey = newExternalFact.NewKey ?? Key,
+                    PreviousFactTypeName = FactTypeName,
+                    PreviousKey = Key,
+                    NewFactTypeName = newExternalFact.NewFactTypeName ?? FactTypeName,
+                    Authentication = externalFact.Authentication,
+                    AuthenticationUrl = externalFact.AuthenticationUrl,
+                    CronScheduleExpression = externalFact.CronScheduleExpression,
+                    TokenAuthorizationHeader = externalFact.TokenAuthorizationHeader,
+                    Url = externalFact.Url,
+                    Secret = externalFact.Secret,
+                    ClientId = externalFact.ClientId
+                };
+            var result = await FactStoreServiceClient.PutExternalFactAsync(updateExternalFact);
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "External fact config type succesvol aangepast." });
+            NavigationManager.NavigateTo("/externalfactconfigs");
+        }
+        catch (Exception ex)
+        {
+            var y = ex;
+            externalFact = new ExternalFactConfig();
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "Oeps! Er is iets fout gegaan.");
+        }
+    }
+}
+

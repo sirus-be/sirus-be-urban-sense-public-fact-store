@@ -1,0 +1,401 @@
+﻿@page "/facttypes/edit"
+@page "/facttypes/edit/{Name}"
+@attribute [Authorize(Roles = Roles.Admin + "," + Roles.SuperAdmin)]
+<style>
+    .rz-fieldset {
+        width: 600px;
+    }
+
+    .rz-dropdown {
+        width: 100%;
+    }
+</style>
+<div style="margin-bottom:2em">
+    <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/<RadzenLink Path="/" Text="Fact store" target="_self" />/<RadzenLink Path="/facttypes" Text="Fact types" target="_self" />/ Fact type @Name aanpassen
+</div>
+
+<h3>Fact type aanpassen</h3>
+<h4>Naam: <strong>@Name</strong></h4>
+<div style="text-align: right; width:100%">
+    <RadzenLink Path="/facttypes" Text="Terug naar fact types" Style="margin: 0 1rem 1rem 0" />
+</div>
+<RadzenTemplateForm Data="@factType" Submit="(FactType args) => Submit(args)">
+    <div class="row">
+        <RadzenFieldset Text="Bewerking fact type">
+            <div class="row" style="margin-bottom:1rem">
+                <div class="col-md-4 align-items-center d-flex">
+                    <RadzenLabel Text="Naam" />
+                </div>
+                <div class="col-md-8">
+                    <RadzenTextBox Style="width:100%" Name="Name" @bind-Value="@factType.Name" />
+                    <RadzenRequiredValidator Component="Name" Text="Naam is verplicht" />
+                </div>
+            </div>
+            <div class="row" style="margin-bottom:1rem">
+                <div class="col-md-4 align-items-center d-flex">
+                    <RadzenLabel Text="Omschrijving" />
+                </div>
+                <div class="col-md-8">
+                    <RadzenTextArea Style="width:100%" Name="Description" @bind-Value="@factType.Description" />
+                </div>
+            </div>
+            <div style="text-align:right; width:100%">
+                <RadzenButton ButtonType="ButtonType.Submit" Icon="save" Text="Opslaan" />
+            </div>
+        </RadzenFieldset>
+    </div>
+</RadzenTemplateForm>
+
+<h5 style="margin-top:2rem">Facts</h5>
+<div class="row" style="justify-content:space-between">
+    <div class="m-3" style=" display: flex; align-items:center">
+        <AuthorizeView Roles="@($"{Roles.Admin},{Roles.SuperAdmin}")">
+            <div style="text-align: left; width:100%">
+                <RadzenButton Click="@AddFact"
+                              Text="Fact toevoegen"
+                              ButtonStyle="ButtonStyle.Secondary"
+                              Style="margin: 0 1rem 1rem 0"></RadzenButton>
+            </div>
+        </AuthorizeView>
+    </div>
+    <div class="m-3">
+        <RadzenTextBox Placeholder="Zoeken..." Change=@(args=> OnFactsSearch(args)) />
+    </div>
+</div>
+<RadzenDataGrid Data="@facts"
+                @ref="factsGrid"
+                Count="@factsCount"
+                LoadData="@LoadFactsData"
+                AllowSorting="true"
+                AllowFiltering="false"
+                AllowPaging="true"
+                PageSizeOptions="@factsPageSizeOptions"
+                TItem="Fact"
+                ColumnWidth="200px">
+    <Columns>
+        <RadzenDataGridColumn TItem="Fact" Property="Key" Title="Sleutel">
+            <FooterTemplate>
+                <FooterCount PageSize="factsPageSize" Count="factsCount" Grid="factsGrid" TItem="Fact" />
+            </FooterTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Fact" Property="Value" Title="Waarde" />
+        <RadzenDataGridColumn TItem="Fact" Property="Description" Title="Omschrijving" />
+        <AuthorizeView Roles="@($"{Roles.Admin},{Roles.SuperAdmin}")">
+            <RadzenDataGridColumn TItem="Fact" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="35px">
+                <Template Context="fact">
+                    <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="edit" Size="ButtonSize.Medium" Click="@(args => EditFact(fact))" @onclick:stopPropagation="true" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Fact" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="45px">
+                <Template Context="fact">
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium" Click="@(args => DeleteDialog(fact))" @onclick:stopPropagation="true" />
+                </Template>
+            </RadzenDataGridColumn>
+        </AuthorizeView>
+    </Columns>
+</RadzenDataGrid>
+
+<h5 style="margin-top:2rem">Rollen</h5>
+<div class="row" style="display:flex; justify-content: space-between">
+    <div class="m-3" style=" display: flex; align-items:center">
+        <RadzenLabel Text="Rol toevoegen:" Style="margin-right:1rem" />
+        <RadzenDropDown Name="RoleAssignment"
+                        AllowClear="true"
+                        TValue="string"
+                        Style="width:100%"
+                        LoadData=@LoadRoleCandidates
+                        AllowFiltering="true"
+                        Count="@rolesListCount"
+                        Data="@rolesList"
+                        Change="(args => AddConfirmation(args))" />
+    </div>
+    <div class="m-3">
+        <RadzenTextBox Placeholder="Zoeken..." Change=@(args=> OnRolesSearch(args)) />
+    </div>
+</div>
+
+<RadzenDataGrid Data="@roles"
+                @ref="rolesGrid"
+                Count="@rolesCount"
+                LoadData="@LoadAssignedFactTypeRoles"
+                AllowSorting="true"
+                AllowFiltering="false"
+                AllowPaging="true"
+                PageSizeOptions="@rolesPageSizeOptions"
+                TItem="Role"
+                ColumnWidth="200px">
+    <Columns>
+        <RadzenDataGridColumn TItem="Role" Property="Name" Title="Naam">
+            <FooterTemplate>
+                <FooterCount Count="rolesCount" Grid="rolesGrid" PageSize="rolesPageSize" TItem="Role" />
+            </FooterTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Role" Property="Description" Title="Omschrijving" />
+        <RadzenDataGridColumn TItem="Role" Title="Actie" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="35px">
+            <Template Context="role">
+                <RadzenButton ButtonStyle="ButtonStyle.Warning" Icon="delete" Size="ButtonSize.Medium" Click="@(args => DeleteConfirmation(role))" @onclick:stopPropagation="true" />
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+
+@code {
+    [Inject]
+    private IFactStoreServiceClient FactStoreServiceClient { get; set; }
+
+    FactType factType = new FactType();
+    UpdateFactType newFactType;
+    IEnumerable<Role> roles;
+    IEnumerable<Fact> facts;
+    RadzenDataGrid<Role> rolesGrid;
+    RadzenDataGrid<Fact> factsGrid;
+    IEnumerable<int> rolesPageSizeOptions = new int[] { 5, 10, 25, 50 };
+    IEnumerable<int> factsPageSizeOptions = new int[] { 5, 10, 25, 50 };
+    List<string> factTypeRoles { get; set; }
+    IEnumerable<string> rolesList { get; set; }
+    int factsCount;
+    int rolesCount;
+    int rolesPageSize;
+    int factsPageSize;
+    int rolesListCount;
+    LoadDataArgs factArgs;
+    LoadDataArgs roleArgs;
+
+    [Parameter]
+    public string Name { get; set; }
+
+    private async Task LoadRoleCandidates(LoadDataArgs args)
+    {
+        factType = await FactStoreServiceClient.GetFactTypeAsync(Name);
+        var parameters = new RoleParameters
+            {
+                PageIndex = 0,
+                PageSize = 0,
+                Sorting = args.OrderBy ?? string.Empty,
+                Search = args.Filter
+            };
+        var roles = await FactStoreServiceClient.GetRolesAsync(parameters);
+        var factTypeRoles = await FactStoreServiceClient.GetFactTypesRolesAsync(parameters, Name);
+        var rolesNames = roles.Items.Select(x => x.Name);
+        var facTypeRolesNames = factTypeRoles.Items.Select(x => x.Name);
+        var diff = rolesNames.Except(facTypeRolesNames);
+
+        var query = diff.AsQueryable();
+
+        rolesListCount = query.Count();
+        rolesList = query;
+    }
+
+    private async Task LoadAssignedFactTypeRoles(LoadDataArgs args)
+    {
+        try
+        {
+            var parameters = new RoleParameters
+                {
+                    PageIndex = rolesGrid.CurrentPage,
+                    PageSize = args.Top.Value,
+                    Sorting = args.OrderBy ?? string.Empty,
+                    Search = args.Filter
+                };
+            var query = await FactStoreServiceClient.GetFactTypesRolesAsync(parameters, Name);
+            var result = query.AsQueryable();
+            rolesPageSize = args.Top.Value;
+            rolesCount = query.Count;
+            factTypeRoles = result.Select(x => x.Name).ToList();
+            roles = result;
+
+        }
+        catch (Exception ex)
+        {
+            roles = Enumerable.Empty<Role>();
+        }
+    }
+
+    private async Task LoadFactsData(LoadDataArgs args)
+    {
+        try
+        {
+            var parameters = new FactParameters
+                {
+                    PageIndex = factsGrid.CurrentPage,
+                    PageSize = args.Top.Value,
+                    Sorting = args.OrderBy ?? string.Empty,
+                    Search = args.Filter
+                };
+            var query = await FactStoreServiceClient.GetFactsByFactTypeNameAsync(Name, parameters);
+            var result = query.AsQueryable();
+            factsPageSize = args.Top.Value;
+            factsCount = query.Count;
+            facts = result;
+        }
+        catch (Exception ex)
+        {
+            facts = Enumerable.Empty<Fact>();
+        }
+    }
+
+    private void AddFact()
+    {
+        NavigationManager.NavigateTo($"/facts/create/{Name}");
+    }
+
+    private void EditFact(Fact fact)
+    {
+        NavigationManager.NavigateTo($"/facts/edit/{fact.FactTypeName}/{fact.Key}/facttypes-edit");
+    }
+
+    private async Task Submit(FactType factType)
+    {
+        if (factTypeRoles.Count == 0)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Error", Detail = "Een fact type moet ten minste een rol hebben." });
+        }
+        else
+        {
+            try
+            {
+                newFactType = new UpdateFactType { Description = factType.Description, NewName = factType.Name, PreviousName = Name, Roles = factTypeRoles };
+                var result = await FactStoreServiceClient.PutFactTypeAsync(newFactType);
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "Fact type succesvol aangepast." });
+                NavigationManager.NavigateTo("/facttypes");
+            }
+            catch (Exception ex)
+            {
+                factType = new FactType();
+                NotificationService.Notify(NotificationSeverity.Error, "Error", "Oeps! Er is iets fout gegaan.");
+            }
+        }
+    }
+
+    private async Task DeleteConfirmation(Role role)
+    {
+        var roleName = role.Name;
+        await DialogService.OpenAsync("Bevestigen", deleteDialog =>
+    @<div style="text-align:center;">
+        <p>Bent u zeker om rol <strong>@roleName</strong> van fact type <strong>@Name</strong> te verwijderen ?</p>
+        <div class="row">
+            <div class="col-md-12">
+                <RadzenButton Text="Ok" Click="() =>RemoveRoleFromFactType(deleteDialog, roleName)" Style="margin-bottom: 10px; width: 150px" />
+                <RadzenButton Text="Cancel" Click="() => deleteDialog.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px" />
+            </div>
+        </div>
+    </div>
+    );
+    }
+
+    private async Task DeleteDialog(Fact fact)
+    {
+        await DialogService.OpenAsync("Bevestigen", deleteDialog =>
+    @<div style="text-align:center;">
+        <p>Bent u zeker om fact <strong>@fact.Key</strong> te verwijderen ?</p>
+        <div class="row">
+            <div class="col-md-12">
+                <RadzenButton Text="Ok" Click="() =>DeleteFactAsync(fact, deleteDialog)" Style="margin-bottom: 10px; width: 150px" />
+                <RadzenButton Text="Cancel" Click="() => deleteDialog.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px" />
+            </div>
+        </div>
+    </div>
+    );
+    }
+
+    private async Task DeleteFactAsync(Fact fact, DialogService dialog)
+    {
+        try
+        {
+            await FactStoreServiceClient.DeleteFactAsync(fact.FactTypeName, fact.Key);
+            dialog.Close();
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "Fact werd succesvol verwijderd." });
+            await factsGrid.Reload();
+        }
+        catch (Exception ex)
+        {
+            dialog.Close();
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Oeps! Er is iets fout gegaan." });
+        }
+    }
+
+    private async Task AddConfirmation(object value)
+    {
+        DialogService.Open("Bevestigen", confirmationDialog =>
+    @<div style="text-align:center;">
+        <p>Bent u zeker om rol <strong>@value</strong> aan fact type <strong>@Name</strong> toe te voegen ?</p>
+        <div class="row">
+            <div class="col-md-12">
+                <RadzenButton Text="Ok" Click="() => AddRoleToFactType(confirmationDialog, value)" Style="margin-bottom: 10px; width: 150px" />
+                <RadzenButton Text="Cancel" Click="() => confirmationDialog.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px" />
+            </div>
+        </div>
+    </div>
+    );
+    }
+
+    private async Task AddRoleToFactType(DialogService dialog, object value)
+    {
+        dialog.Close(false);
+        factTypeRoles.Add(value.ToString());
+        try
+        {
+            newFactType = new UpdateFactType { Description = factType.Description, NewName = factType.Name, PreviousName = Name, Roles = factTypeRoles };
+            var result = await FactStoreServiceClient.PutFactTypeAsync(newFactType);
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "Rol succesvol toevoegen aan fact type." });
+            await rolesGrid.Reload();
+        }
+        catch (Exception ex)
+        {
+            factType = new FactType();
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "Oeps! Er is iets fout gegaan.");
+        }
+        dialog.Dispose();
+    }
+
+    private async Task RemoveRoleFromFactType(DialogService dialog, string roleName)
+    {
+        dialog.Close(false);
+        if (factTypeRoles.Count == 1)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Error", Detail = "Een fact type moet ten minste een rol hebben." });
+        }
+        else
+        {
+            factTypeRoles.Remove(roleName);
+            try
+            {
+                newFactType = new UpdateFactType { Description = factType.Description, NewName = factType.Name, PreviousName = Name, Roles = factTypeRoles };
+                var result = await FactStoreServiceClient.PutFactTypeAsync(newFactType);
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "Rol werd succesvol verwijderd van fact type." });
+                await rolesGrid.Reload();
+            }
+            catch (Exception ex)
+            {
+                factType = new FactType();
+                NotificationService.Notify(NotificationSeverity.Error, "Error", "Oeps! Er is iets fout gegaan.");
+            }
+        }
+        dialog.Dispose();
+    }
+
+    async Task OnFactsSearch(string search)
+    {
+        factArgs = new LoadDataArgs
+            {
+                Skip = factsGrid.Query.Skip,
+                Top = factsGrid.Query.Top,
+                Filter = search,
+                OrderBy = factsGrid.Query.OrderBy
+            };
+        await LoadFactsData(factArgs);
+    }
+
+    async Task OnRolesSearch(string search)
+    {
+        roleArgs = new LoadDataArgs
+            {
+                Skip = rolesGrid.Query.Skip,
+                Top = rolesGrid.Query.Top,
+                Filter = search,
+                OrderBy = rolesGrid.Query.OrderBy
+            };
+        await LoadAssignedFactTypeRoles(roleArgs);
+    }
+}

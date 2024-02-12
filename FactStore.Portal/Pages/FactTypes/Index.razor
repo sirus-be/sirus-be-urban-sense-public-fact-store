@@ -1,0 +1,168 @@
+﻿@page "/facttypes"
+@attribute [Authorize]
+
+<div style="margin-bottom:2em">
+    <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/<RadzenLink Path="/" Text="Fact store" target="_self" />/ Fact types
+</div>
+
+<h2>Fact types</h2>
+<div class="row" style="display:flex; justify-content:space-between">
+    <div class="m-3" style=" display: flex; align-items:center">
+        <AuthorizeView Roles="@($"{Roles.Admin},{Roles.SuperAdmin}")">
+            <div style="text-align: left; width:100%">
+                <RadzenButton Click="@CreateFactType"
+                              Text="Fact type aanmaken"
+                              ButtonStyle="ButtonStyle.Secondary"
+                              Style="margin: 0 1rem 1rem 0"></RadzenButton>
+            </div>
+        </AuthorizeView>
+    </div>
+
+    <div class="m-3">
+        <RadzenTextBox Placeholder="Zoeken..." Change=@(args=> OnFactTypesSearch(args)) />
+    </div>
+</div>
+<RadzenDataGrid @ref="grid"
+                Count="@count"
+                Data="@factTypes"
+                LoadData="@LoadData"
+                AllowSorting="true"
+                AllowFiltering="false"
+                AllowPaging="true"
+                PageSizeOptions="@pageSizeOptions"
+                TItem="FactType"
+                ColumnWidth="200px"
+                @bind-Value="@selectedFactTypes"
+                @onclick="@Navigate"
+                Style="cursor: pointer">
+    <Columns>
+        <RadzenDataGridColumn TItem="FactType" Property="Name" Title="Naam">
+            <FooterTemplate>
+                <FooterCount Count="count" Grid="grid" PageSize="pageSize" TItem="FactType" />
+            </FooterTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="FactType" Property="Description" Title="Omschrijving" Width="150px" />
+        <AuthorizeView Roles="@($"{Roles.Admin},{Roles.SuperAdmin}")">
+            <RadzenDataGridColumn TItem="FactType" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="35px">
+                <Template Context="factType">
+                    <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="edit" Size="ButtonSize.Medium" Click="@(args => EditFactType(factType))" @onclick:stopPropagation="true" />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="FactType" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="45px">
+                <Template Context="factType">
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium" Click="@(args => DeleteDialog(factType))" @onclick:stopPropagation="true" />
+                </Template>
+            </RadzenDataGridColumn>
+        </AuthorizeView>
+    </Columns>
+</RadzenDataGrid>
+
+
+
+    @code {
+    [Inject]
+    private IFactStoreServiceClient FactStoreServiceClient { get; set; }
+
+    bool loadFailed;
+    IEnumerable<int> pageSizeOptions = new int[] { 5, 10, 25, 50 };
+
+    RadzenDataGrid<FactType> grid;
+    int count;
+    IEnumerable<FactType> factTypes;
+    FactTypeParameters parameters;
+    int pageSize;
+    IList<FactType> selectedFactTypes { get; set; }
+    LoadDataArgs factTypeArgs;
+
+
+    async Task LoadData(LoadDataArgs args)
+    {
+        try
+        {
+            loadFailed = false;
+            parameters = new FactTypeParameters
+                {
+                    PageIndex = grid.CurrentPage,
+                    PageSize = args.Top.Value,
+                    Sorting = args.OrderBy ?? string.Empty,
+                    Search = args.Filter
+                };
+            var query = await FactStoreServiceClient.GetFactTypesAsync(parameters);
+            var result = query.AsQueryable();
+            count = query.Count;
+            pageSize = args.Top.Value;
+            factTypes = result;
+        }
+
+        catch (Exception ex)
+        {
+            loadFailed = true;
+            factTypes = Enumerable.Empty<FactType>();
+        }
+    }
+
+    public void CreateFactType()
+    {
+        NavigationManager.NavigateTo("facttypes/create");
+    }
+
+    public void EditFactType(FactType factType)
+    {
+        NavigationManager.NavigateTo($"facttypes/edit/{factType.Name}");
+    }
+
+    private async Task DeleteDialog(FactType factType)
+    {
+        await DialogService.OpenAsync("Bevestigen", deleteDialog =>
+    @<div style="text-align:center;">
+        <p>Bent u zeker om facttype <strong>@factType.Name</strong> te verwijderen ?</p>
+        <p>Alle onderliggende facts worden ook verwijderd!</p>
+        <div class="row">
+            <div class="col-md-12">
+                <RadzenButton Text="Ok" Click="() =>DeleteFactTypeAsync(factType, deleteDialog)" Style="margin-bottom: 10px; width: 150px" />
+                <RadzenButton Text="Cancel" Click="() => deleteDialog.Close(false)" ButtonStyle="ButtonStyle.Secondary" Style="margin-bottom: 10px; width: 150px" />
+            </div>
+        </div>
+    </div>
+    );
+    }
+
+    private async Task DeleteFactTypeAsync(FactType factType, DialogService dialog)
+    {
+        try
+        {
+            await FactStoreServiceClient.DeleteFactTypeAsync(factType.Name);
+            dialog.Close();
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "FactType werd succesvol verwijderd." });
+            await grid.Reload();
+        }
+        catch (Exception ex)
+        {
+            dialog.Close();
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Error", Detail = "Oeps! Er is iets fout gegaan." });
+        }
+    }
+
+    private void Navigate()
+    {
+        if (selectedFactTypes != null)
+        {
+            NavigationManager.NavigateTo($"facttypes/details/{selectedFactTypes.First().Name}");
+            selectedFactTypes.Clear();
+        }
+    }
+
+    async Task OnFactTypesSearch(string search)
+    {
+        factTypeArgs = new LoadDataArgs
+            {
+                Skip = grid.Query.Skip,
+                Top = grid.Query.Top,
+                Filter = search,
+                OrderBy = grid.Query.OrderBy
+            };
+        await LoadData(factTypeArgs);
+    }
+
+
+    }

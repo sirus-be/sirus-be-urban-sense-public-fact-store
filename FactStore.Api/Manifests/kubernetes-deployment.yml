@@ -1,0 +1,62 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: factstoreapi
+  labels:
+    app: factstore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: factstoreapi
+  template:
+    metadata:
+      labels:
+        app: factstore
+        service: factstoreapi
+    spec:
+      containers:
+        - name: factstoreapi
+          image: <container-registry>/<image-name>:<tag>
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "250m"
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          env:
+            - name: ASPNETCORE_URLS
+              value: http://+:80
+            - name: IdentityProviderUrl
+              valueFrom:
+                configMapKeyRef:
+                    name: environmentconfig
+                    key: IdentityProviderUrl
+            - name: IdentityProvider
+              valueFrom:
+                configMapKeyRef:
+                    name: environmentconfig
+                    key: IdentityProvider
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                    name: environmentconfig
+                    key: AspNetCore_Environment
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: factstoreapi
+  labels:
+    app: factstore
+    service: factstoreapi
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    service: factstoreapi

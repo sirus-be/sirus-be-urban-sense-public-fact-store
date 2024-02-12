@@ -1,0 +1,120 @@
+﻿@page "/roles/"
+@attribute [Authorize(Roles = Roles.SuperAdmin)]
+
+    <div style="margin-bottom:2em">
+        <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/<RadzenLink Path="/" Text="Fact store" target="_self" />/ Rollen
+    </div>
+
+    <h2>Rollen</h2>
+    <div class="row" style="display:flex; justify-content: space-between">
+        <div class="m-3">
+            <RadzenButton Click="@CreateRole"
+                          Text="Rol aanmaken"
+                          ButtonStyle="ButtonStyle.Secondary"
+                          Style="margin: 0 1rem 1rem 0"></RadzenButton>
+        </div>
+        <div class="m-3">
+            <RadzenTextBox Placeholder="Zoeken..." Change=@(args => OnRolesSearch(args)) />
+        </div>
+    </div>
+    <RadzenDataGrid @ref="grid"
+                    Count="@count"
+                    Data="@roles"
+                    LoadData="@LoadData"
+                    TItem="Role"
+                    AllowSorting="true"
+                    AllowFiltering="false"
+                    AllowPaging="true"
+                    PageSizeOptions="@pageSizeOptions"
+                    ColumnWidth="200px"
+                    @bind-Value="@selectedRoles"
+                    @onclick="@Navigate">
+        <Columns>
+            <RadzenDataGridColumn TItem="Role" Property="Name" Title="Naam">
+                <FooterTemplate>
+                    <FooterCount Count="count" Grid="grid" PageSize="pageSize" TItem="Role" />
+                </FooterTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Role" Property="Description" Title="Omschrijving" />
+            <RadzenDataGridColumn TItem="Role" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="35px">
+                <Template Context="role">
+                    <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="edit" Size="ButtonSize.Medium" Click="@(args => EditRole(role))" @onclick:stopPropagation="true" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+
+
+    @code{
+
+        [Inject]
+        private IFactStoreServiceClient FactStoreServiceClient { get; set; }
+
+        IEnumerable<int> pageSizeOptions = new int[] { 5, 10, 25, 50 };
+
+        RadzenDataGrid<Role> grid;
+        int count;
+        IEnumerable<Role> roles;
+        RoleParameters parameters;
+        int pageSize;
+        IList<Role> selectedRoles;
+        LoadDataArgs rolesArgs { get; set; }
+
+        async Task LoadData(LoadDataArgs args)
+        {
+            try
+            {
+                parameters = new RoleParameters
+                {
+                    PageIndex = grid.CurrentPage,
+                    PageSize = args.Top.Value,
+                    Sorting = args.OrderBy ?? string.Empty,
+                    Search = args.Filter
+                };
+
+                var query = await FactStoreServiceClient.GetRolesAsync(parameters);
+                var result = query.AsQueryable();
+                pageSize = args.Top.Value;
+                count = query.Count;
+                roles = result;
+            }
+            catch (Exception ex)
+            {
+                roles = Enumerable.Empty<Role>();
+            }
+        }
+
+        private void CreateRole()
+        {
+            NavigationManager.NavigateTo("/roles/create");
+        }
+
+        private async void Navigate()
+        {
+            if (selectedRoles != null)
+            {
+                await EditRole(selectedRoles.First());
+                selectedRoles.Clear();
+            }
+        }
+
+        private async Task EditRole(Role role)
+        {
+            NavigationManager.NavigateTo($"/roles/edit/{role.Name}");
+        }
+
+        private async Task OnRolesSearch(string search)
+        {
+
+            rolesArgs = new LoadDataArgs
+            {
+                Skip = grid.Query.Skip,
+                Top = grid.Query.Top,
+                Filter = search,
+                OrderBy = grid.Query.OrderBy
+            };
+
+            await LoadData(rolesArgs);
+        }
+    }

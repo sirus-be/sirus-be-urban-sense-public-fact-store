@@ -1,0 +1,198 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FactStore.Api</name>
+    </assembly>
+    <members>
+        <member name="M:FactStore.Api.Controllers.v1.CachedFactController.GetAllFactTypeFactsKeyValues(System.String,FactStore.Models.Parameters.FactParameters)">
+            <summary>
+            Returns all facttype facts as key values
+            </summary>
+            <param name="factTypeName">The factType's name</param>
+            <param name="factParameters">Parameters for sorting, paging, filtering,...</param>
+            <returns></returns>   
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.ExternalFactConfigController.GetAll(FactStore.Models.Parameters.ExternalFactParameters)">
+            <summary>
+            Returns all ExternalFactConfigs
+            </summary>
+            <param name="pageIndex">Page number</param>
+            <param name="pageSize">Number of items per page</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.ExternalFactConfigController.GetById(System.String,System.String)">
+            <summary>
+            Get one ExternalFactConfig by id
+            </summary>
+            <param name="factTypeName">The factType's name</param>
+            <param name="key">The fact's key</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.ExternalFactConfigController.Create(FactStore.Models.ExternalFactConfig)">
+            <summary>
+            Insert one ExternalFactConfig in the database
+            </summary>
+            <param name="externalFactConfig">The create externalFactConfigs</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.ExternalFactConfigController.Update(FactStore.Models.UpdateExternalFactConfig)">
+            <summary>
+            Update an ExternalFactConfig from the database
+            </summary>
+            <param name="externalFactConfig">The update externalFactConfig</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.ExternalFactConfigController.UpdateExternalFactFactValue(FactStore.Models.ExternalFactConfig)">
+            <summary>
+            Update the Fact Value of the External Fact
+            </summary>
+            <param name="externalFactConfig">The update externalFactConfig</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.ExternalFactConfigController.Delete(System.String,System.String)">
+            <summary>
+            Delete an ExternalFactConfig from the database
+            </summary>
+            <param name="id">The ExternalFactConfig's Id</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactController.GetAll(FactStore.Models.Parameters.FactParameters)">
+            <summary>
+            Returns all facts
+            </summary>
+            <param name="factParameters">Parameters for sorting, paging, filtering,...</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactController.GetAllFactTypeFacts(System.String,FactStore.Models.Parameters.FactParameters)">
+            <summary>
+            Returns all facttype facts
+            </summary>
+            <param name="factTypeName">The factType's name</param>
+            <param name="factParameters">Parameters for sorting, paging, filtering,...</param>
+            <returns></returns>   
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactController.GetAllFactTypeFactsKeyValues(System.String,FactStore.Models.Parameters.FactParameters)">
+            <summary>
+            Returns all facttype facts as key values
+            </summary>
+            <param name="factTypeName">The factType's name</param>
+            <param name="factParameters">Parameters for sorting, paging, filtering,...</param>
+            <returns></returns>   
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactController.GetById(System.String,System.String)">
+            <summary>
+            Get one fact by facttype and key
+            </summary>
+            <param name="factTypeName">The factType's name</param>
+            <param name="key">The fact's key</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactController.Create(FactStore.Models.Fact)">
+            <summary>
+            Insert one fact in the database
+            </summary>
+            <param name="fact">The create fact</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactController.Update(FactStore.Models.UpdateFact)">
+            <summary>
+            Update a fact from the database
+            </summary>
+            <param name="fact">The update fact</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactController.BatchUpsert(System.Collections.Generic.List{FactStore.Models.Fact})">
+            <summary>
+            Upsert batch facts
+            </summary>
+            <param name="facts">The facts batch</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactController.Delete(System.String,System.String)">
+            <summary>
+            Delete a fact from the database
+            </summary>
+            <param name="factTypeName">The factType's name</param>
+            <param name="key">The fact's Key</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactTypeController.GetAll(FactStore.Models.Parameters.FactTypeParameters)">
+            <summary>
+            Returns all facttypes
+            </summary>
+            <param name="factTypeParameters">Parameters for sorting, paging, filtering,...</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactTypeController.GetByName(System.String)">
+            <summary>
+            Get one facttype by id
+            </summary>
+            <param name="id">The factType's Id</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactTypeController.Create(FactStore.Models.FactType)">
+            <summary>
+            Insert one facttype in the database
+            </summary>
+            <param name="factType">The create facttype</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactTypeController.Update(FactStore.Models.UpdateFactType)">
+            <summary>
+            Update a facttype from the database
+            </summary>
+            <param name="factType">The update facttype</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactTypeController.BatchUpsert(System.Collections.Generic.List{FactStore.Models.FactType})">
+            <summary>
+            Upsert batch facttypes
+            </summary>
+            <param name="factTypes">The facttypes batch</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.FactTypeController.Delete(System.String)">
+            <summary>
+            Delete a facttype and all related facts from the database
+            </summary>
+            <param name="factTypeName">The factType's name</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.RoleController.GetAll(FactStore.Models.Parameters.RoleParameters)">
+            <summary>
+            Returns all roles
+            </summary>
+            <param name="roleParameters">Parameters for sorting, paging, filtering,...</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.RoleController.GetAllFactTypeRoles(System.String,FactStore.Models.Parameters.RoleParameters)">
+            <summary>
+            Returns all facttype roles
+            </summary>
+            <param name="factTypeName">The factType's name</param>
+            <param name="roleParameters">Parameters for sorting, paging, filtering,...</param>
+            <returns></returns>   
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.RoleController.GetByName(System.String)">
+            <summary>
+            Get one role by id
+            </summary>
+            <param name="id">The role's Id</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.RoleController.Create(FactStore.Models.Role)">
+            <summary>
+            Insert one role in the database
+            </summary>
+            <param name="role">The create role</param>
+            <returns></returns>
+        </member>
+        <member name="M:FactStore.Api.Controllers.v1.RoleController.Update(FactStore.Models.UpdateRole)">
+            <summary>
+            Update a role from the database
+            </summary>
+            <param name="role">The update role</param>
+            <returns></returns>
+        </member>
+    </members>
+</doc>

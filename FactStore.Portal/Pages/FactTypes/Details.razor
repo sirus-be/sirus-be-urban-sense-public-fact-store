@@ -1,0 +1,189 @@
+﻿@page "/facttypes/details"
+@page "/facttypes/details/{Name}"
+@attribute [Authorize]
+
+<div style="margin-bottom:2em">
+    <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/<RadzenLink Path="/" Text="Fact store" target="_self" />/<RadzenLink Path="/facttypes" Text="Fact types" target="_self" />/ Fact type @Name
+</div>
+
+<h3>Details van fact type: @Name</h3>
+
+<div style="text-align: right; width:100%">
+    <RadzenLink Path="/facttypes" Text="Terug naar fact types" Style="margin: 0 1rem 1rem 0" />
+</div>
+<RadzenTemplateForm Data="@factType">
+    <div class="row">
+        <RadzenCard Style="width: 600px;">
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Naam:</div>
+                <b>@factType.Name</b>
+            </div>
+            <div class="row" style="margin-top:1rem; display:flex; justify-content: space-between">
+                <div>Omschrijving:</div>
+                <b>@factType.Description</b>
+            </div>
+        </RadzenCard>
+    </div>
+    <AuthorizeView Context="Auth" Roles=@($"{Roles.Admin},{Roles.SuperAdmin}")>
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary"
+                      Text="Fact type aanpassen"
+                      Icon="edit"
+                      Click="@(args => NavigateToEdit(factType.Name))"
+                      Style="margin-top:2rem;" />
+    </AuthorizeView>
+</RadzenTemplateForm>
+
+
+<h5 style="margin-top:2rem">Facts</h5>
+<div class="row" style="justify-content:flex-end">
+    <div class="m-3">
+        <RadzenTextBox Placeholder="Zoeken..." Change=@(args=> OnFactsSearch(args)) />
+    </div>
+</div>
+<RadzenDataGrid Data="@facts"
+                @ref="factsGrid"
+                Count="@factsCount"
+                LoadData="@LoadFactsData"
+                AllowSorting="true"
+                AllowFiltering="false"
+                AllowPaging="true"
+                PageSizeOptions="@factsPageSizeOptions"
+                TItem="Fact"
+                ColumnWidth="200px">
+    <Columns>
+        <RadzenDataGridColumn TItem="Fact" Property="Key" Title="Sleutel">
+            <FooterTemplate>
+                <FooterCount PageSize="factsPageSize" Count="factsCount" Grid="factsGrid" TItem="Fact" />
+            </FooterTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Fact" Property="Value" Title="Waarde" />
+        <RadzenDataGridColumn TItem="Fact" Property="Description" Title="Omschrijving" />
+    </Columns>
+</RadzenDataGrid>
+
+<h5 style="margin-top:2rem">Rollen</h5>
+<div class="row" style="justify-content:flex-end">
+    <div class="m-3">
+        <RadzenTextBox Placeholder="Zoeken..." Change=@(args=> OnRolesSearch(args)) />
+    </div>
+</div>
+<RadzenDataGrid Data="@roles"
+                @ref="rolesGrid"
+                Count="@rolesCount"
+                LoadData="@LoadRolesData"
+                AllowSorting="true"
+                AllowFiltering="false"
+                AllowPaging="true"
+                PageSizeOptions="@rolesPageSizeOptions"
+                TItem="Role"
+                ColumnWidth="200px">
+    <Columns>
+        <RadzenDataGridColumn TItem="Role" Property="Name" Title="Naam">
+            <FooterTemplate>
+                <FooterCount Grid="rolesGrid" Count="rolesCount" PageSize="rolesPageSize" TItem="Role" />
+            </FooterTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Role" Property="Description" Title="Omschrijving" />
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+
+    [Inject]
+    private IFactStoreServiceClient FactStoreServiceClient { get; set; }
+    [Parameter]
+    public string Name { get; set; }
+
+    private FactType factType = new FactType();
+    IEnumerable<Role> roles;
+    IEnumerable<Fact> facts;
+    RadzenDataGrid<Role> rolesGrid;
+    RadzenDataGrid<Fact> factsGrid;
+    private List<string> rolesList { get; set; }
+    IEnumerable<int> rolesPageSizeOptions = new int[] { 5, 10, 25, 50 };
+    IEnumerable<int> factsPageSizeOptions = new int[] { 5, 10, 25, 50 };
+
+    LoadDataArgs factArgs;
+    LoadDataArgs roleArgs;
+
+    int rolesCount;
+    int factsCount;
+    int factsPageSize;
+    int rolesPageSize;
+
+
+    async Task LoadRolesData(LoadDataArgs args)
+    {
+        try
+        {
+            factType = await FactStoreServiceClient.GetFactTypeAsync(Name);
+            var parameters = new RoleParameters
+            {
+                PageIndex = rolesGrid.CurrentPage,
+                PageSize = args.Top.Value,
+                Sorting = args.OrderBy ?? string.Empty,
+                Search = args.Filter
+            };
+            var result = await FactStoreServiceClient.GetFactTypesRolesAsync(parameters, Name);
+            rolesCount = result.Count;
+            rolesPageSize = args.Top.Value;
+            roles = result.Items;
+        }
+        catch (Exception ex)
+        {
+            roles = Enumerable.Empty<Role>();
+        }
+    }
+
+    async Task LoadFactsData(LoadDataArgs args)
+    {
+        try
+        {
+            var parameters = new FactParameters
+            {
+                PageIndex = factsGrid.CurrentPage,
+                PageSize = args.Top.Value,
+                Sorting = args.OrderBy ?? string.Empty,
+                Search = args.Filter
+            };
+            var query = await FactStoreServiceClient.GetFactsByFactTypeNameAsync(Name, parameters);
+            var result = query.AsQueryable();
+            factsPageSize = args.Top.Value;
+            factsCount = query.Count;
+            facts = result;
+        }
+        catch (Exception ex)
+        {
+            facts = Enumerable.Empty<Fact>();
+        }
+    }
+
+    private void NavigateToEdit(string name)
+    {
+        NavigationManager.NavigateTo($"/facttypes/edit/{name}");
+    }
+
+    async Task OnFactsSearch(string search)
+    {
+        factArgs = new LoadDataArgs
+        {
+            Skip = factsGrid.Query.Skip,
+            Top = factsGrid.Query.Top,
+            Filter = search,
+            OrderBy = factsGrid.Query.OrderBy
+        };
+        await LoadFactsData(factArgs);
+    }
+
+    async Task OnRolesSearch(string search)
+    {
+        roleArgs = new LoadDataArgs
+        {
+            Skip = rolesGrid.Query.Skip,
+            Top = rolesGrid.Query.Top,
+            Filter = search,
+            OrderBy = rolesGrid.Query.OrderBy
+        };
+        await LoadRolesData(roleArgs);
+    }
+}

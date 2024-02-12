@@ -1,0 +1,51 @@
+﻿<div class="top-row pl-4 navbar navbar-dark">
+    @*<a class="navbar-brand" href="">Portaal</a>*@
+    <button class="navbar-toggler" @onclick="ToggleNavMenu">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <ul class="nav flex-column">
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Fact Store
+            </NavLink>
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="facttypes">
+                <span class="oi oi-plus" aria-hidden="true"></span> Fact types
+            </NavLink>
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="facts">
+                <span class="oi oi-plus" aria-hidden="true"></span> Facts
+            </NavLink>
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="externalfactconfigs">
+                <span class="oi oi-plus" aria-hidden="true"></span> Externe facts
+            </NavLink>
+        </li>
+        <AuthorizeView Roles=@Roles.SuperAdmin>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="roles">
+                    <span class="oi oi-plus" aria-hidden="true"></span> Rollen
+                </NavLink>
+            </li>
+        </AuthorizeView>
+    </ul>
+</div>
+<img src="images/Urban-Sense-Logo.png" width="100" style="position:fixed; left:32px; bottom:0; margin-bottom:2em" />
+
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

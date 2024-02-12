@@ -1,0 +1,77 @@
+﻿@page "/roles/create"
+@attribute [Authorize(Roles = Roles.SuperAdmin)]
+<style>
+    .rz-fieldset {
+        width:600px;
+    }
+
+    .rz-dropdown{
+        width:100%;
+    }
+</style>
+    <div style="margin-bottom:2em">
+        <RadzenLink Path="@Config.Value.PortalUri" Text="Portaal" target="_self" />/<RadzenLink Path="/" Text="Fact store" target="_self" />/<RadzenLink Path="/roles" Text="Rollen" target="_self" />/ Rol aanmaken
+    </div>
+
+    <h3>Rol aanmaken</h3>
+
+    <div style="text-align: right; width:100%">
+        <RadzenLink Path="/roles" Text="Terug naar rollen" Style="margin: 0 1rem 1rem 0" />
+    </div>
+
+    <RadzenTemplateForm Data="@role" Submit="(Role args) => Submit(args)">
+        <div class="row">
+            <RadzenFieldset Text="Nieuw rol">
+                <div class="row" style="margin-bottom:1rem">
+                    <div class="col-md-4 align-items-center d-flex">
+                        <RadzenLabel Text="Naam" />
+                    </div>
+                    <div class="col-md-8">
+                        <RadzenTextBox Style="width:100%" Name="Name" @bind-Value="role.Name" />
+                        <RadzenRequiredValidator Component="Name" Text="Naam is verplicht" />
+                    </div>
+                </div>
+                <div class="row" style="margin-bottom:1rem">
+                    <div class="col-md-4 align-items-center d-flex">
+                        <RadzenLabel Text="Omschrijving" />
+                    </div>
+                    <div class="col-md-8">
+                        <RadzenTextArea Style="width:100%" Name="Description" @bind-Value="role.Description" />
+                    </div>
+                </div>
+                <div style="text-align:right; width:100%">
+                    <RadzenButton ButtonType="ButtonType.Submit" Icon="save" Text="Aanmaken" />
+                </div>
+            </RadzenFieldset>
+        </div>
+    </RadzenTemplateForm>
+
+    @code {
+        [Inject]
+        private IFactStoreServiceClient FactStoreServiceClient { get; set; }
+
+        Role role = new Role();
+
+        async Task Submit(Role role)
+        {
+            try
+            {
+                var result = await FactStoreServiceClient.PostRoleAsync(role);
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Succes", Detail = "Rol succesvol toegevoegd." });
+                EmptyForm();
+                NavigationManager.NavigateTo("/roles");
+            }
+            catch (Exception ex)
+            {
+                EmptyForm();
+                string errorMessage = string.IsNullOrWhiteSpace(ex.Message) ? "Oeps! Er is iets fout gegaan." : ex.Message;
+                NotificationService.Notify(NotificationSeverity.Error, "Error", errorMessage);
+            }
+        }
+
+        private void EmptyForm()
+        {
+            role.Name = "";
+            role.Description = "";
+        }
+    }
